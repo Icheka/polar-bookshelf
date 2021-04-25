@@ -1,70 +1,23 @@
 import React from "react";
 import {useDocViewerCallbacks, useDocViewerStore} from "../../DocViewerStore";
 import {useFakePinchToZoom} from "../../PinchHooks";
-import {ScaleLevelTuple, ScaleLevelTuples} from "../../ScaleLevels";
+import {ScaleLevelTuple} from "../../ScaleLevels";
 
-type UseElemWidthChangedOpts = {
-    threshold?: number;
-    elemRef: React.RefObject<HTMLElement>;
-};
-
-export const useElemWidthChanged = (callback: () => void, opts: UseElemWidthChangedOpts) => {
-    const {threshold = 5, elemRef} = opts;
-    const oldWidthRef = React.useRef<number>(window.innerWidth);
-    useResizeObserver(React.useCallback(({ contentRect: { width } }) => {
-        if (Math.abs(oldWidthRef.current - width) > threshold) {
-            oldWidthRef.current = width;
-            callback();
-        }
-    }, [oldWidthRef, callback, threshold]), elemRef);
-};
-
-type UseResizeObserverCallback = (entry: ResizeObserverEntry) => void;
-
-export const useResizeObserver = (callback: UseResizeObserverCallback, elemRef: React.RefObject<HTMLElement>) => {
-    const callbackRef = React.useRef<UseResizeObserverCallback>(callback);
-
-    const baseCallback: ResizeObserverCallback = React.useCallback((entries) => {
-        callbackRef.current(entries[0]);
-    }, []);
-
-    React.useEffect(() => {
-        callbackRef.current = callback;
-    }, [callback]);
-
-    React.useEffect(() => {
-        if (!elemRef.current) {
-            return;
-        }
-        const resizeObserver = new ResizeObserver(baseCallback)
-        resizeObserver.observe(elemRef.current);
-        return () => resizeObserver.disconnect();
-    }, [elemRef, baseCallback]);
-};
-
-interface IUsePDFPinchToZoomArgs {
-    containerRef: React.RefObject<HTMLElement>; 
+interface UseIPDFPinchToZoomArgs {
+    viewerRef: React.RefObject<HTMLElement>; 
     wrapperRef: React.RefObject<HTMLElement>; 
 }
 
-export const usePDFPinchToZoom = ({ containerRef, wrapperRef }: IUsePDFPinchToZoomArgs) => {
+export const usePDFPinchToZoom: React.FC<UseIPDFPinchToZoomArgs> = ({ viewerRef, wrapperRef }) => {
     const {docScale} = useDocViewerStore(['docScale']);
     const {setScale} = useDocViewerCallbacks();
-    const initialScale = React.useRef<number>();
-
-    React.useEffect(() => {
-        if (docScale && docScale?.scale.value === "page-width") {
-            initialScale.current = docScale.scaleValue;
-        }
-    }, [docScale]);
-
-    // useElemWidthChanged(() => setScale(ScaleLevelTuples[1]), { elemRef: wrapperRef });
-
+    
     const shouldUpdate = React.useCallback((zoom: number): boolean => {
-        const min = initialScale.current!, max = 4;
+        const wrapper = wrapperRef.current!, viewer = viewerRef.current!;
+        const max = 4;
         const scale = docScale!.scaleValue * zoom;
-        return (scale >= min || zoom > 1) && (scale <= max || zoom < 1);
-    }, [docScale, initialScale]);
+        return (wrapper.scrollWidth > viewer.getBoundingClientRect().width || zoom > 1) && (scale <= max || zoom < 1);
+    }, [docScale]);
 
     const onZoom = React.useCallback((zoom: number): void => {
         const newScale = zoom * docScale!.scaleValue;
@@ -76,10 +29,10 @@ export const usePDFPinchToZoom = ({ containerRef, wrapperRef }: IUsePDFPinchToZo
     }, [docScale, setScale]);
 
     useFakePinchToZoom({
+        viewerRef,
+        wrapperRef,
+        shouldUpdate,
         onZoom,
-        shouldUpdate: shouldUpdate,
-        elemRef: containerRef,
-        wrapperRef: wrapperRef,
-        enabled: !! initialScale,
     });
+    return null;
 };

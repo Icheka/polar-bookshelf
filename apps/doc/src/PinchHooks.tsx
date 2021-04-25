@@ -1,7 +1,7 @@
 import React from "react";
 
 interface IUseFakePinchToZoomArgs {
-    elemRef: React.RefObject<HTMLElement>;
+    viewerRef: React.RefObject<HTMLElement>;
     wrapperRef: React.RefObject<HTMLElement>;
     onZoom: (scale: number) => void;
     shouldUpdate: (scale: number) => boolean;
@@ -12,17 +12,18 @@ interface IUseFakePinchToZoomArgs {
 export type UsePinchMoveHandler = (arg: { delta: number, initial: [number, number] }) => void;
 
 export const useFakePinchToZoom = ({
-    elemRef,
+    viewerRef,
     wrapperRef,
     shouldUpdate,
     onZoom,
     enabled = true,
 }: IUseFakePinchToZoomArgs) => {
     const pinchingRef = React.useRef<boolean>(false);
-    const zoomRef     = React.useRef(1);
+    const initial = React.useRef<boolean>(false);
+    const zoomRef = React.useRef(1);
 
     const onMove: UsePinchMoveHandler = React.useCallback(({ delta }) => {
-        const elem = elemRef.current!;
+        const elem = viewerRef.current!;
         const wrapper = wrapperRef.current!;
         const newScale = zoomRef.current + (delta / window.innerWidth);
         if (!shouldUpdate(newScale)) {
@@ -34,40 +35,41 @@ export const useFakePinchToZoom = ({
             const elemRect = elem.getBoundingClientRect();
             const wrapperRect = wrapper.getBoundingClientRect();
             const x = -elemRect.left + wrapperRect.left, y = -elemRect.top + wrapperRect.top;
-            elem.style.transformOrigin = `${x}px ${y}px`;
             elem.style.willChange = "transform";
             pinchingRef.current = true;
+            elem.style.transformOrigin = `${x}px ${y}px`;
+            
         }
         elem.style.transform = `scale(${newScale})`;
-    }, [zoomRef, pinchingRef, shouldUpdate, elemRef, wrapperRef]);
+    }, [zoomRef, pinchingRef, shouldUpdate, viewerRef, wrapperRef]);
 
     const onFinish = React.useCallback(() => {
-        const elem = elemRef.current!;
+        const elem = viewerRef.current!;
         pinchingRef.current = false;
         elem.removeAttribute('style');
         onZoom(zoomRef.current);
         zoomRef.current = 1;
-    }, [zoomRef, onZoom, elemRef]);
+    }, [zoomRef, onZoom, viewerRef]);
 
     usePinch({
-        elemRef,
+        viewerRef,
         onMove,
         onFinish,
-        enabled: enabled && !!elemRef.current && !!wrapperRef.current,
+        enabled: enabled && !!viewerRef.current && !!wrapperRef.current,
     });
 };
 
 type UsePinchConfig = {
-    elemRef: React.RefObject<HTMLElement>;
+    viewerRef: React.RefObject<HTMLElement>;
     onMove: UsePinchMoveHandler;
     onFinish: () => void;
     enabled?: boolean;
 };
 
-export const usePinch = ({ elemRef, onMove, onFinish, enabled = true }: UsePinchConfig) => {
+export const usePinch = ({ viewerRef, onMove, onFinish, enabled = true }: UsePinchConfig) => {
 
     React.useEffect(() => {
-        if (!elemRef.current || !enabled) {
+        if (!viewerRef.current || !enabled) {
             return;
         }
         let startX = 0, startY = 0;
@@ -117,7 +119,7 @@ export const usePinch = ({ elemRef, onMove, onFinish, enabled = true }: UsePinch
             onFinish();
             reset();
         };
-        const elem = elemRef.current;
+        const elem = viewerRef.current;
 
         elem.addEventListener("touchstart", onTouchStart);
         elem.addEventListener("touchmove", onTouchMove, { passive: false });
@@ -130,5 +132,5 @@ export const usePinch = ({ elemRef, onMove, onFinish, enabled = true }: UsePinch
             elem.removeEventListener("touchend", onTouchEnd);
             elem.removeEventListener("touchcancel", onTouchEnd);
         };
-    }, [onFinish, onMove, enabled, elemRef]);
+    }, [onFinish, onMove, enabled, viewerRef]);
 }

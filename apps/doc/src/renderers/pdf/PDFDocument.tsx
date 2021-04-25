@@ -443,6 +443,8 @@ export const PDFDocument = deepMemo(function PDFDocument(props: IProps) {
 
         const docID = props.docMeta.docInfo.fingerprint;
         docViewerRef.current = createDocViewer(docID);
+        // @ts-ignore
+        window.viewer = docViewerRef.current;
 
         doLoad(docViewerRef.current)
             .catch(err => log.error("PDFDocument: Could not load PDF: ", err));

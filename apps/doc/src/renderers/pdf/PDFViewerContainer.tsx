@@ -31,7 +31,7 @@ export const PDFViewerContainer = React.memo(function PDFViewerContainer(props: 
     const viewerRef = React.useRef<HTMLDivElement>(null);
     const wrapperRef = React.useRef<HTMLDivElement>(null);
     
-    usePDFPinchToZoom({ containerRef: viewerRef, wrapperRef: wrapperRef });
+    usePDFPinchToZoom({ viewerRef, wrapperRef });
 
     ++iter;
 
